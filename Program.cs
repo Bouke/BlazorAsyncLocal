@@ -19,6 +19,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseMiddleware<AsyncLocalMiddleware>();
+app.UseRequestLocalization("nl");
+
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
@@ -29,3 +32,22 @@ app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
 app.Run();
+
+public class AsyncLocalMiddleware
+{
+    private static int instances = 0;
+    public static readonly AsyncLocal<int?> Instance = new();
+    private readonly RequestDelegate next;
+
+    public AsyncLocalMiddleware(RequestDelegate next)
+    {
+        this.next = next ?? throw new ArgumentNullException(nameof(next));
+    }
+
+    public async Task InvokeAsync(HttpContext context, ILogger<AsyncLocalMiddleware> logger)
+    {
+        Instance.Value = instances++;
+        logger.LogInformation($"Set instance to {Instance.Value}");
+        await next(context);
+    }
+}
